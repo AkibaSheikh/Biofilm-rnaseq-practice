@@ -184,15 +184,17 @@ top <- head(rownames(resOrdered_clean), 30)
 mat <- assay(vsd)[top, ]
 mat <- mat - rowMeans(mat)
 
+# Show the heatmap in the Plots pane
 pheatmap(mat,
          annotation_col = coldata_ctrl["growth"],
          main = "Top 30 genes: biofilm vs planktonic")
 
-png("figures/heatmap_top30.png", width = 2000, height = 1800, res = 300)
+# Save it to a file (opens, draws and closes in one step)
 pheatmap(mat,
          annotation_col = coldata_ctrl["growth"],
-         main = "Top 30 genes: biofilm vs planktonic")
-dev.off()
+         main = "Top 30 genes: biofilm vs planktonic",
+         filename = "figures/heatmap_top30.png",
+         width = 7, height = 6)
 
 # ---- Step 8: Functional interpretation ----
 
