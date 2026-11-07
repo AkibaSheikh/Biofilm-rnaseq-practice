@@ -116,3 +116,22 @@ up   <- sum(res_unshrunk$padj < 0.05 & res_unshrunk$log2FoldChange >  1, na.rm =
 down <- sum(res_unshrunk$padj < 0.05 & res_unshrunk$log2FoldChange < -1, na.rm = TRUE)
 c(up_in_biofilm = up, down_in_biofilm = down)
 
+sum(res_unshrunk$padj < 0.05 & abs(res_unshrunk$log2FoldChange) > 2, na.rm = TRUE)
+
+# ---- Step 5: PCA ----
+
+vsd <- vst(dds, blind = FALSE)
+
+pca_data <- plotPCA(vsd, intgroup = "growth", returnData = TRUE)
+percentVar <- round(100 * attr(pca_data, "percentVar"))
+
+p_pca <- ggplot(pca_data, aes(PC1, PC2, colour = growth, label = name)) +
+  geom_point(size = 4) +
+  geom_text(vjust = -1, size = 3, show.legend = FALSE) +
+  labs(x = paste0("PC1: ", percentVar[1], "% variance"),
+       y = paste0("PC2: ", percentVar[2], "% variance"),
+       title = "PCA of control samples (biofilm vs planktonic)") +
+  theme_bw()
+
+p_pca
+ggsave("figures/pca.png", p_pca, width = 6, height = 5, dpi = 300)
