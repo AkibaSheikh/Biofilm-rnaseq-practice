@@ -84,3 +84,35 @@ c(before = genes_before, after = genes_after, removed = genes_before - genes_aft
 qc_summary <- data.frame(genes_before, genes_after, removed = genes_before - genes_after)
 write.csv(qc_summary, "results/filtering_summary.csv", row.names = FALSE)
 write.csv(qc_df, "results/total_counts_per_sample.csv", row.names = FALSE)
+
+# ---- Step 4: Differential expression with DESeq2 ----
+# Main comparison: biofilm vs planktonic, untreated controls only
+
+ctrl <- coldata$treatment == "control"
+counts_ctrl  <- round(as.matrix(counts_filtered[, ctrl]))
+coldata_ctrl <- droplevels(coldata[ctrl, ])
+
+stopifnot(all(colnames(counts_ctrl) == rownames(coldata_ctrl)))
+table(coldata_ctrl$growth)      # expect 3 planktonic, 3 biofilm
+
+dds <- DESeqDataSetFromMatrix(countData = counts_ctrl,
+                              colData   = coldata_ctrl,
+                              design    = ~ growth)
+dds <- DESeq(dds)
+resultsNames(dds)
+
+# Unshrunk results: use these for p-values and counting significant genes
+res_unshrunk <- results(dds, contrast = c("growth", "biofilm", "planktonic"))
+
+# Shrunk fold changes: use these for plots (volcano, ranking)
+res <- lfcShrink(dds, coef = "growth_biofilm_vs_planktonic", type = "apeglm")
+
+resOrdered <- res[order(res$padj), ]
+write.csv(as.data.frame(resOrdered), "results/DE_results.csv")
+
+summary(res_unshrunk, alpha = 0.05)
+
+up   <- sum(res_unshrunk$padj < 0.05 & res_unshrunk$log2FoldChange >  1, na.rm = TRUE)
+down <- sum(res_unshrunk$padj < 0.05 & res_unshrunk$log2FoldChange < -1, na.rm = TRUE)
+c(up_in_biofilm = up, down_in_biofilm = down)
+
