@@ -158,3 +158,22 @@ p_volcano <- EnhancedVolcano(res,
 
 p_volcano
 ggsave("figures/volcano.png", p_volcano, width = 7, height = 6, dpi = 300)
+
+# ---- Step 7: Heatmap of top 30 genes ----
+library(pheatmap)
+
+resOrdered_clean <- resOrdered[!is.na(resOrdered$padj), ]
+top <- head(rownames(resOrdered_clean), 30)
+
+mat <- assay(vsd)[top, ]
+mat <- mat - rowMeans(mat)
+
+pheatmap(mat,
+         annotation_col = coldata_ctrl["growth"],
+         main = "Top 30 genes: biofilm vs planktonic")
+
+png("figures/heatmap_top30.png", width = 2000, height = 1800, res = 300)
+pheatmap(mat,
+         annotation_col = coldata_ctrl["growth"],
+         main = "Top 30 genes: biofilm vs planktonic")
+dev.off()
