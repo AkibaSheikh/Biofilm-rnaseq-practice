@@ -50,12 +50,16 @@ stopifnot(all(colnames(counts) == rownames(coldata)))
 
 ls()
 
+# Part 1: Total counts per sample
+
 # ---- Step 3: Quality control and filtering ----
 
 # Total reads counted per sample
 lib_sizes <- colSums(counts)
 lib_sizes
 summary(lib_sizes)
+
+# Part 2: Save a bar plot
 
 qc_df <- data.frame(sample = names(lib_sizes),
                     total = as.numeric(lib_sizes),
@@ -72,6 +76,7 @@ p_qc <- ggplot(qc_df, aes(x = sample, y = total / 1e6, fill = growth)) +
 p_qc
 ggsave("figures/total_counts_per_sample.png", p_qc, width = 7, height = 4, dpi = 300)
 
+#Part 3: Filter out very low-count genes
 
 genes_before <- nrow(counts)
 
@@ -81,9 +86,12 @@ counts_filtered <- counts[keep, ]
 genes_after <- nrow(counts_filtered)
 c(before = genes_before, after = genes_after, removed = genes_before - genes_after)
 
+#Part 4: Save the numbers (optional but useful)
 qc_summary <- data.frame(genes_before, genes_after, removed = genes_before - genes_after)
 write.csv(qc_summary, "results/filtering_summary.csv", row.names = FALSE)
 write.csv(qc_df, "results/total_counts_per_sample.csv", row.names = FALSE)
+
+#Part 1: Pick the control samples and build the DESeq2 object
 
 # ---- Step 4: Differential expression with DESeq2 ----
 # Main comparison: biofilm vs planktonic, untreated controls only
@@ -98,8 +106,11 @@ table(coldata_ctrl$growth)      # expect 3 planktonic, 3 biofilm
 dds <- DESeqDataSetFromMatrix(countData = counts_ctrl,
                               colData   = coldata_ctrl,
                               design    = ~ growth)
+#Part 2: Run the model
 dds <- DESeq(dds)
 resultsNames(dds)
+
+#Part 3: Get the results
 
 # Unshrunk results: use these for p-values and counting significant genes
 res_unshrunk <- results(dds, contrast = c("growth", "biofilm", "planktonic"))
@@ -112,11 +123,14 @@ write.csv(as.data.frame(resOrdered), "results/DE_results.csv")
 
 summary(res_unshrunk, alpha = 0.05)
 
+#Part 4: Count up- and down-regulated genes
+
 up   <- sum(res_unshrunk$padj < 0.05 & res_unshrunk$log2FoldChange >  1, na.rm = TRUE)
 down <- sum(res_unshrunk$padj < 0.05 & res_unshrunk$log2FoldChange < -1, na.rm = TRUE)
 c(up_in_biofilm = up, down_in_biofilm = down)
 
 sum(res_unshrunk$padj < 0.05 & abs(res_unshrunk$log2FoldChange) > 2, na.rm = TRUE)
+
 
 # ---- Step 5: PCA ----
 
@@ -138,6 +152,8 @@ ggsave("figures/pca.png", p_pca, width = 6, height = 5, dpi = 300)
 
 library(ggrepel)
 geom_text_repel(size = 3, show.legend = FALSE)
+
+
 
 # ---- Step 6: Volcano plot ----
 library(EnhancedVolcano)
@@ -177,3 +193,25 @@ pheatmap(mat,
          annotation_col = coldata_ctrl["growth"],
          main = "Top 30 genes: biofilm vs planktonic")
 dev.off()
+
+# ---- Step 8: Functional interpretation ----
+
+#Part 1: Make a table of the top 30 genes
+
+top30_tbl <- as.data.frame(resOrdered_clean[1:30, c("log2FoldChange", "padj")])
+top30_tbl$locus_tag <- rownames(top30_tbl)
+top30_tbl$direction <- ifelse(top30_tbl$log2FoldChange > 0,
+                              "higher in biofilm", "higher in planktonic")
+top30_tbl$product  <- ""
+top30_tbl$category <- ""
+
+write.csv(top30_tbl[, c("locus_tag", "log2FoldChange", "padj",
+                        "direction", "product", "category")],
+          "results/top30_genes_annotation.csv", row.names = FALSE)
+
+#Optional KEGG enrichment
+
+library(clusterProfiler)
+sig <- rownames(res_unshrunk)[which(res_unshrunk$padj < 0.05 & abs(res_unshrunk$log2FoldChange) > 1)]
+kk <- enrichKEGG(gene = sig, organism = "pae", pvalueCutoff = 0.05)
+head(as.data.frame(kk))
