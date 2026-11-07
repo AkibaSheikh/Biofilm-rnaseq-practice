@@ -8,7 +8,7 @@ published data. I did not generate the data.
 
 ## Dataset
 - GEO accession: GSE302777
-- Organism: Pseudomonas aeruginosa (PAO1; the count file name says PAO1DK, so confirm on the GEO page)
+- Organism: Pseudomonas aeruginosa 
 - Platform: Illumina NovaSeq 6000
 - Samples: 12
 - Design: 4 conditions x 3 biological replicates
@@ -41,7 +41,7 @@ DOI: 10.1038/s41598-025-32848-4
 ![Heatmap of top 30 genes](figures/heatmap_top30.png)
 
 ## Interpretation
-[Paste your 3 to 4 sentence paragraph here.]
+Untreated biofilm and planktonic cells of P. aeruginosa differed widely in gene expression: 1,489 genes were higher in biofilm and 1,254 were higher in planktonic (adjusted p < 0.05, |log2FC| > 1, n = 3 per group), and PC1 alone explained 98% of the variance between the groups. Among the 30 most significant genes, 22 were higher in biofilm and 8 were higher in planktonic. KEGG enrichment of the differentially expressed genes highlighted oxidative phosphorylation, the TCA cycle, the ribosome and carbon metabolism, so changes cluster in central energy metabolism and protein synthesis, although this first enrichment did not separate up- and down-regulated genes. I have not yet compared these results with the source paper's biofilm findings, so I make no claim about agreement, and the data show association, not mechanism. This raises the question of whether the direction of change in these pathways differs between biofilm and planktonic cells.
 
 ## Limitations
 - Public dataset (GSE302777) analysed for practice; I did not generate the data.
