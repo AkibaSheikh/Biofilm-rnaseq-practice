@@ -47,3 +47,40 @@ coldata
 table(coldata$growth, coldata$treatment)   # expect 3 in every cell
 all(counts == round(counts))           # expect TRUE
 stopifnot(all(colnames(counts) == rownames(coldata)))
+
+ls()
+
+# ---- Step 3: Quality control and filtering ----
+
+# Total reads counted per sample
+lib_sizes <- colSums(counts)
+lib_sizes
+summary(lib_sizes)
+
+qc_df <- data.frame(sample = names(lib_sizes),
+                    total = as.numeric(lib_sizes),
+                    growth = coldata$growth,
+                    treatment = coldata$treatment)
+
+p_qc <- ggplot(qc_df, aes(x = sample, y = total / 1e6, fill = growth)) +
+  geom_col() +
+  labs(x = "Sample", y = "Total counts (millions)",
+       title = "Total counts per sample") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+p_qc
+ggsave("figures/total_counts_per_sample.png", p_qc, width = 7, height = 4, dpi = 300)
+
+
+genes_before <- nrow(counts)
+
+keep <- rowSums(counts) >= 10
+counts_filtered <- counts[keep, ]
+
+genes_after <- nrow(counts_filtered)
+c(before = genes_before, after = genes_after, removed = genes_before - genes_after)
+
+qc_summary <- data.frame(genes_before, genes_after, removed = genes_before - genes_after)
+write.csv(qc_summary, "results/filtering_summary.csv", row.names = FALSE)
+write.csv(qc_df, "results/total_counts_per_sample.csv", row.names = FALSE)
