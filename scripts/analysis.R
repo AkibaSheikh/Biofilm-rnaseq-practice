@@ -135,3 +135,26 @@ p_pca <- ggplot(pca_data, aes(PC1, PC2, colour = growth, label = name)) +
 
 p_pca
 ggsave("figures/pca.png", p_pca, width = 6, height = 5, dpi = 300)
+
+library(ggrepel)
+geom_text_repel(size = 3, show.legend = FALSE)
+
+# ---- Step 6: Volcano plot ----
+library(EnhancedVolcano)
+
+top10 <- head(rownames(resOrdered), 10)
+
+p_volcano <- EnhancedVolcano(res,
+                             lab = rownames(res),
+                             x = "log2FoldChange",
+                             y = "padj",
+                             pCutoff = 0.05,
+                             FCcutoff = 1,
+                             selectLab = top10,
+                             title = "Biofilm vs planktonic (untreated controls)",
+                             subtitle = "Positive log2FC = higher in biofilm",
+                             drawConnectors = TRUE,
+                             max.overlaps = 20)
+
+p_volcano
+ggsave("figures/volcano.png", p_volcano, width = 7, height = 6, dpi = 300)
