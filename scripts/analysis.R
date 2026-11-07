@@ -215,3 +215,56 @@ library(clusterProfiler)
 sig <- rownames(res_unshrunk)[which(res_unshrunk$padj < 0.05 & abs(res_unshrunk$log2FoldChange) > 1)]
 kk <- enrichKEGG(gene = sig, organism = "pae", pvalueCutoff = 0.05)
 head(as.data.frame(kk))
+
+# ---- KEGG enrichment, up and down separately, correct background ----
+sig_up   <- rownames(res_unshrunk)[which(res_unshrunk$padj < 0.05 & res_unshrunk$log2FoldChange >  1)]
+sig_down <- rownames(res_unshrunk)[which(res_unshrunk$padj < 0.05 & res_unshrunk$log2FoldChange < -1)]
+bg <- rownames(counts_ctrl)
+
+kk_up   <- enrichKEGG(gene = sig_up,   organism = "pae", universe = bg, pvalueCutoff = 0.05)
+kk_down <- enrichKEGG(gene = sig_down, organism = "pae", universe = bg, pvalueCutoff = 0.05)
+
+cols <- c("Description", "GeneRatio", "BgRatio", "p.adjust", "Count")
+head(as.data.frame(kk_up)[, cols], 10)
+head(as.data.frame(kk_down)[, cols], 10)
+
+write.csv(as.data.frame(kk_up),   "results/KEGG_higher_in_biofilm.csv",     row.names = FALSE)
+write.csv(as.data.frame(kk_down), "results/KEGG_higher_in_planktonic.csv", row.names = FALSE)
+
+p_kegg <- dotplot(kk_up, showCategory = 10) + ggtitle("KEGG: higher in biofilm")
+ggsave("figures/kegg_up.png", p_kegg, width = 7, height = 5, dpi = 300)
+
+#Get the product names automatically
+
+library(KEGGREST)
+
+pae <- keggList("pae")                # all PAO1 genes with their descriptions
+names(pae) <- sub("^pae:", "", names(pae))
+
+top30_tbl$product <- unname(pae[top30_tbl$locus_tag])
+top30_tbl[, c("locus_tag", "log2FoldChange", "padj", "product")]
+
+write.csv(top30_tbl[, c("locus_tag", "log2FoldChange", "padj",
+                        "direction", "product", "category")],
+          "results/top30_genes_annotation.csv", row.names = FALSE)
+
+# ---- Step 8: top 30 genes with product names ----
+library(KEGGREST)
+
+resOrdered_clean <- resOrdered[!is.na(resOrdered$padj), ]
+
+top30_tbl <- as.data.frame(resOrdered_clean[1:30, c("log2FoldChange", "padj")])
+top30_tbl$locus_tag <- rownames(top30_tbl)
+top30_tbl$direction <- ifelse(top30_tbl$log2FoldChange > 0,
+                              "higher in biofilm", "higher in planktonic")
+
+pae <- keggList("pae")                # all PAO1 genes with descriptions
+names(pae) <- sub("^pae:", "", names(pae))
+top30_tbl$product  <- unname(pae[top30_tbl$locus_tag])
+top30_tbl$category <- ""
+
+top30_tbl[, c("locus_tag", "log2FoldChange", "padj", "direction", "product")]
+
+write.csv(top30_tbl[, c("locus_tag", "log2FoldChange", "padj",
+                        "direction", "product", "category")],
+          "results/top30_genes_annotation.csv", row.names = FALSE)
