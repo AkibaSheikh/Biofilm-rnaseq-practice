@@ -240,15 +240,16 @@ ggsave("figures/kegg_up.png", p_kegg, width = 7, height = 5, dpi = 300)
 
 library(KEGGREST)
 
-pae <- keggList("pae")                # all PAO1 genes with their descriptions
-names(pae) <- sub("^pae:", "", names(pae))
-
+pae_df <- read.delim("https://rest.kegg.jp/list/pae", header = FALSE,
+                     sep = "\t", quote = "", stringsAsFactors = FALSE)
+pae <- setNames(pae_df$V4, sub("^pae:", "", pae_df$V1))
 top30_tbl$product <- unname(pae[top30_tbl$locus_tag])
 top30_tbl[, c("locus_tag", "log2FoldChange", "padj", "product")]
 
 write.csv(top30_tbl[, c("locus_tag", "log2FoldChange", "padj",
                         "direction", "product", "category")],
           "results/top30_genes_annotation.csv", row.names = FALSE)
+
 
 # ---- Step 8: top 30 genes with product names ----
 library(KEGGREST)
@@ -260,13 +261,39 @@ top30_tbl$locus_tag <- rownames(top30_tbl)
 top30_tbl$direction <- ifelse(top30_tbl$log2FoldChange > 0,
                               "higher in biofilm", "higher in planktonic")
 
-pae <- keggList("pae")                # all PAO1 genes with descriptions
-names(pae) <- sub("^pae:", "", names(pae))
-top30_tbl$product  <- unname(pae[top30_tbl$locus_tag])
-top30_tbl$category <- ""
+pae_df <- read.delim("https://rest.kegg.jp/list/pae", header = FALSE,
+                     sep = "\t", quote = "", stringsAsFactors = FALSE)
+pae <- setNames(pae_df$V4, sub("^pae:", "", pae_df$V1))
+top30_tbl$product <- unname(pae[top30_tbl$locus_tag])
 
-top30_tbl[, c("locus_tag", "log2FoldChange", "padj", "direction", "product")]
+# Categories chosen by reading the product names
+cat_map <- c(
+  PA2424="metabolism", PA1190="unknown", PA2323="metabolism", PA3790="transport",
+  PA4913="transport", PA2920="motility and chemotaxis", PA1555="metabolism",
+  PA3361="matrix and adhesion", PA4587="stress response", PA4326="unknown",
+  PA2747="unknown", PA0534="unknown", PA1634="transport", PA1633="transport",
+  PA2932="metabolism", PA3865="transport", PA2402="metabolism", PA3676="transport",
+  PA3459="metabolism", PA2433="unknown", PA4131="unknown", PA3023="metabolism",
+  PA1123="unknown", PA2931="regulation", PA3369="unknown", PA1256="transport",
+  PA1423="motility and chemotaxis", PA0494="metabolism", PA1538="metabolism",
+  PA1494="unknown")
+top30_tbl$category <- unname(cat_map[top30_tbl$locus_tag])
+table(top30_tbl$direction, top30_tbl$category)
 
-write.csv(top30_tbl[, c("locus_tag", "log2FoldChange", "padj",
-                        "direction", "product", "category")],
+write.csv(top30_tbl[, c("locus_tag", "log2FoldChange", "padj", "direction", "product", "category")],
           "results/top30_genes_annotation.csv", row.names = FALSE)
+
+# ---- Step 8: KEGG enrichment, higher in biofilm vs higher in planktonic ----
+library(clusterProfiler)
+
+sig_up   <- rownames(res_unshrunk)[which(res_unshrunk$padj < 0.05 & res_unshrunk$log2FoldChange >  1)]
+sig_down <- rownames(res_unshrunk)[which(res_unshrunk$padj < 0.05 & res_unshrunk$log2FoldChange < -1)]
+bg <- rownames(counts_ctrl)
+
+kk_up   <- enrichKEGG(gene = sig_up,   organism = "pae", universe = bg, pvalueCutoff = 0.05)
+kk_down <- enrichKEGG(gene = sig_down, organism = "pae", universe = bg, pvalueCutoff = 0.05)
+
+write.csv(as.data.frame(kk_up),   "results/KEGG_higher_in_biofilm.csv",    row.names = FALSE)
+write.csv(as.data.frame(kk_down), "results/KEGG_higher_in_planktonic.csv", row.names = FALSE)
+
+
